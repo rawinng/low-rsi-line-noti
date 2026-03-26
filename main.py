@@ -6,8 +6,7 @@ from notifier import send_flex
 
 def main():
     tickers = get_sp500_tickers()
-    ## less tickers for testing
-    tickers = tickers[:50]
+    ## less tickers for testing    
     print(f"Total tickers: {len(tickers)}")
 
     buyable = scan_tickers(tickers)
@@ -17,10 +16,10 @@ def main():
         print("No buyable stocks found.")
         return
 
-    result = pd.DataFrame(buyable).sort_values("rsi").reset_index(drop=True)
+    result = pd.DataFrame(buyable).sort_values("rsi").head(10).reset_index(drop=True)
     info_df = get_stock_info(result["ticker"].tolist())
     result = result.merge(info_df, on="ticker", how="left")[
-        ["ticker", "name", "sector", "rsi", "trend"]
+        ["ticker", "name", "sector", "rsi", "trend", "gain_5yr", "profit_margin", "roe", "market_cap", "price"]
     ]
     print(result)
 

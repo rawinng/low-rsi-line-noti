@@ -17,6 +17,8 @@ from linebot.v3.messaging import (
     FlexBox,
     FlexText,
     FlexSeparator,
+    FlexButton,
+    URIAction,
 )
 
 LINE_CHANNEL_ID     = os.environ.get("LINE_CHANNEL_ID", "")
@@ -36,13 +38,48 @@ def _get_token() -> str:
     return resp.json()["access_token"]
 
 
+def _fmt(value, suffix="%", fallback="N/A") -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return fallback
+    return f"{value}{suffix}"
+
+
+def _fmt_mcap(value) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return "N/A"
+    if value >= 1_000_000_000_000:
+        return f"${value / 1_000_000_000_000:.1f}T"
+    if value >= 1_000_000_000:
+        return f"${value / 1_000_000_000:.1f}B"
+    return f"${value / 1_000_000:.0f}M"
+
+
+_SECTOR_COLORS = {
+    "Technology":             "#1d4ed8",  # blue
+    "Health Care":            "#0f766e",  # teal
+    "Financials":             "#1e3a5f",  # navy
+    "Consumer Discretionary": "#b45309",  # amber-brown
+    "Consumer Staples":       "#4d7c0f",  # olive green
+    "Industrials":            "#374151",  # steel grey
+    "Energy":                 "#92400e",  # dark orange
+    "Utilities":              "#5b21b6",  # purple
+    "Real Estate":            "#be185d",  # pink
+    "Materials":              "#065f46",  # dark green
+    "Communication Services": "#1e40af",  # indigo
+}
+_DEFAULT_SECTOR_COLOR = "#1e293b"
+
+
 def _build_bubble(row: dict) -> FlexBubble:
     rsi_color = "#22c55e" if row["rsi"] < 30 else "#f59e0b"
+    header_color = _SECTOR_COLORS.get(row.get("sector", ""), _DEFAULT_SECTOR_COLOR)
+    gain = row.get("gain_5yr")
+    gain_color = "#22c55e" if isinstance(gain, (int, float)) and gain >= 0 else "#ef4444"
     return FlexBubble(
         size="kilo",
         header=FlexBox(
             layout="vertical",
-            background_color="#1e293b",
+            background_color=header_color,
             contents=[
                 FlexText(text=row["ticker"], weight="bold", size="xl", color="#ffffff"),
                 FlexText(text=row["name"], size="xs", color="#94a3b8", wrap=True),
@@ -73,6 +110,60 @@ def _build_bubble(row: dict) -> FlexBubble:
                         FlexText(text="Trend", size="sm", color="#64748b", flex=2),
                         FlexText(text=row["trend"], size="sm", color="#0f172a", flex=3),
                     ],
+                ),
+                FlexSeparator(),
+                FlexBox(
+                    layout="horizontal",
+                    contents=[
+                        FlexText(text="5yr Gain", size="sm", color="#64748b", flex=2),
+                        FlexText(
+                            text=_fmt(gain, suffix="%"),
+                            size="sm", color=gain_color, weight="bold", flex=3,
+                        ),
+                    ],
+                ),
+                FlexBox(
+                    layout="horizontal",
+                    contents=[
+                        FlexText(text="Net Margin", size="sm", color="#64748b", flex=2),
+                        FlexText(text=_fmt(row.get("profit_margin"), suffix="%"), size="sm", color="#0f172a", flex=3),
+                    ],
+                ),
+                FlexBox(
+                    layout="horizontal",
+                    contents=[
+                        FlexText(text="ROE", size="sm", color="#64748b", flex=2),
+                        FlexText(text=_fmt(row.get("roe"), suffix="%"), size="sm", color="#0f172a", flex=3),
+                    ],
+                ),
+                FlexSeparator(),
+                FlexBox(
+                    layout="horizontal",
+                    contents=[
+                        FlexText(text="Price", size="sm", color="#64748b", flex=2),
+                        FlexText(text=_fmt(row.get("price"), suffix=""), size="sm", color="#0f172a", flex=3),
+                    ],
+                ),
+                FlexBox(
+                    layout="horizontal",
+                    contents=[
+                        FlexText(text="Mkt Cap", size="sm", color="#64748b", flex=2),
+                        FlexText(text=_fmt_mcap(row.get("market_cap")), size="sm", color="#0f172a", flex=3),
+                    ],
+                ),
+            ],
+        ),
+        footer=FlexBox(
+            layout="vertical",
+            contents=[
+                FlexButton(
+                    action=URIAction(
+                        label="View on Y!Finance",
+                        uri=f"https://finance.yahoo.com/quote/{row['ticker']}",
+                    ),
+                    style="primary",
+                    color="#1e293b",
+                    height="sm",
                 ),
             ],
         ),
