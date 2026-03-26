@@ -57,8 +57,8 @@ def _fmt_mcap(value) -> str:
 _SECTOR_COLORS = {
     "Technology":             "#1d4ed8",  # blue
     "Health Care":            "#0f766e",  # teal
-    "Financials":             "#1e3a5f",  # navy
-    "Consumer Discretionary": "#b45309",  # amber-brown
+    "Financial Services":       "#1e3a5f",  # navy
+    "Consumer Defensive":       "#b45309",  # amber-brown
     "Consumer Staples":       "#4d7c0f",  # olive green
     "Industrials":            "#374151",  # steel grey
     "Energy":                 "#92400e",  # dark orange
@@ -73,7 +73,7 @@ _DEFAULT_SECTOR_COLOR = "#1e293b"
 def _build_bubble(row: dict) -> FlexBubble:
     rsi_color = "#22c55e" if row["rsi"] < 30 else "#f59e0b"
     header_color = _SECTOR_COLORS.get(row.get("sector", ""), _DEFAULT_SECTOR_COLOR)
-    gain = row.get("gain_5yr")
+    gain = row.get("gain_1yr")
     gain_color = "#22c55e" if isinstance(gain, (int, float)) and gain >= 0 else "#ef4444"
     return FlexBubble(
         size="kilo",
@@ -115,7 +115,7 @@ def _build_bubble(row: dict) -> FlexBubble:
                 FlexBox(
                     layout="horizontal",
                     contents=[
-                        FlexText(text="5yr Gain", size="sm", color="#64748b", flex=2),
+                        FlexText(text="1yr Gain", size="sm", color="#64748b", flex=2),
                         FlexText(
                             text=_fmt(gain, suffix="%"),
                             size="sm", color=gain_color, weight="bold", flex=3,

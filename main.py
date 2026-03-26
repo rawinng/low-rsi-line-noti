@@ -19,7 +19,7 @@ def main():
     result = pd.DataFrame(buyable).sort_values("rsi").head(10).reset_index(drop=True)
     info_df = get_stock_info(result["ticker"].tolist())
     result = result.merge(info_df, on="ticker", how="left")[
-        ["ticker", "name", "sector", "rsi", "trend", "gain_5yr", "profit_margin", "roe", "market_cap", "price"]
+        ["ticker", "name", "sector", "rsi", "trend", "gain_1yr", "profit_margin", "roe", "market_cap", "price"]
     ]
     print(result)
 

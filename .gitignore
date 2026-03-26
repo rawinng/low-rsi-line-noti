@@ -22,3 +22,8 @@ build/
 
 # Logs
 *.log
+logs/
+
+# local script
+run.sh
+*.plist
