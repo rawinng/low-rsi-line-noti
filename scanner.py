@@ -16,8 +16,8 @@ def is_upside(close_series: pd.Series) -> bool:
 
 
 def is_long_term_uptrend(close_series: pd.Series) -> bool:
-    ema200 = close_series.ewm(span=200, adjust=False).mean()
-    return float(close_series.iloc[-1]) > float(ema200.iloc[-1])
+    ema100 = close_series.ewm(span=100, adjust=False).mean()
+    return float(close_series.iloc[-1]) > float(ema100.iloc[-1])
 
 
 def compute_macd(close_series: pd.Series):
@@ -49,7 +49,7 @@ def scan_tickers(tickers: list[str]) -> list[dict]:
             macd_cross = is_macd_crossover(close)
             trend = "UP" if upside else "DOWN"
             signal = "BUY" if rsi < 40 and upside and long_term_up and macd_cross else "-"
-            print(f"{ticker} RSI: {rsi:.2f} | Trend: {trend} | EMA200: {'UP' if long_term_up else 'DOWN'} | MACD X: {macd_cross} | Signal: {signal}")
+            print(f"{ticker} RSI: {rsi:.2f} | Trend: {trend} | EMA100: {'UP' if long_term_up else 'DOWN'} | MACD X: {macd_cross} | Signal: {signal}")
 
             if rsi < 40 and upside and long_term_up and macd_cross:
                 buyable.append({"ticker": ticker, "rsi": round(rsi, 2), "trend": trend})
