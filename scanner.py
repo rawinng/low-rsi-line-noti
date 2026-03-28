@@ -15,19 +15,43 @@ def is_upside(close_series: pd.Series) -> bool:
     return float(close_series.iloc[-1]) > float(sma50.iloc[-1])
 
 
+def is_long_term_uptrend(close_series: pd.Series) -> bool:
+    ema200 = close_series.ewm(span=200, adjust=False).mean()
+    return float(close_series.iloc[-1]) > float(ema200.iloc[-1])
+
+
+def compute_macd(close_series: pd.Series):
+    ema12 = close_series.ewm(span=12, adjust=False).mean()
+    ema26 = close_series.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, signal
+
+
+def is_macd_crossover(close_series: pd.Series) -> bool:
+    """Returns True if MACD line crossed above signal line on the latest bar."""
+    macd, signal = compute_macd(close_series)
+    return (
+        float(macd.iloc[-2]) <= float(signal.iloc[-2]) and
+        float(macd.iloc[-1]) > float(signal.iloc[-1])
+    )
+
+
 def scan_tickers(tickers: list[str]) -> list[dict]:
     buyable = []
     for ticker in tickers:
         try:
-            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+            df = yf.download(ticker, period="1y", interval="1d", progress=False)
             close = df["Close"].squeeze()
             rsi = float(compute_rsi(close).iloc[-1])
             upside = is_upside(close)
+            long_term_up = is_long_term_uptrend(close)
+            macd_cross = is_macd_crossover(close)
             trend = "UP" if upside else "DOWN"
-            signal = "BUY" if rsi < 40 and upside else "-"
-            print(f"{ticker} RSI: {rsi:.2f} | Trend: {trend} | Signal: {signal}")
+            signal = "BUY" if rsi < 40 and upside and long_term_up and macd_cross else "-"
+            print(f"{ticker} RSI: {rsi:.2f} | Trend: {trend} | EMA200: {'UP' if long_term_up else 'DOWN'} | MACD X: {macd_cross} | Signal: {signal}")
 
-            if rsi < 40 and upside:
+            if rsi < 40 and upside and long_term_up and macd_cross:
                 buyable.append({"ticker": ticker, "rsi": round(rsi, 2), "trend": trend})
         except:
             pass
