@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 from fetcher import get_sp500_tickers, get_stock_info
 from scanner import scan_tickers
@@ -5,6 +6,7 @@ from notifier import send_flex, send_no_results
 
 
 def main():
+    start = time.time()
     tickers = get_sp500_tickers()
     ## less tickers for testing    
     print(f"Total tickers: {len(tickers)}")
@@ -15,6 +17,7 @@ def main():
     if not buyable:
         print("No buyable stocks found.")
         send_no_results()
+        print(f"\nTotal time: {time.time() - start:.1f}s")
         return
 
     result = pd.DataFrame(buyable).sort_values("rsi").head(10).reset_index(drop=True)
@@ -25,6 +28,7 @@ def main():
     print(result)
 
     send_flex(result)
+    print(f"\nTotal time: {time.time() - start:.1f}s")
 
 
 if __name__ == "__main__":

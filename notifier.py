@@ -19,6 +19,7 @@ from linebot.v3.messaging import (
     FlexSeparator,
     FlexButton,
     URIAction,
+    TextMessage,
 )
 
 LINE_CHANNEL_ID     = os.environ.get("LINE_CHANNEL_ID", "")
@@ -180,42 +181,11 @@ def send_no_results() -> None:
         return
 
     token = _get_token()
-    bubble = FlexBubble(
-        size="kilo",
-        header=FlexBox(
-            layout="vertical",
-            background_color="#1e293b",
-            contents=[
-                FlexText(text="Low RSI Scanner", weight="bold", size="xl", color="#ffffff"),
-                FlexText(text="Daily Scan Result", size="xs", color="#94a3b8"),
-            ],
-        ),
-        body=FlexBox(
-            layout="vertical",
-            spacing="sm",
-            contents=[
-                FlexText(
-                    text="No buyable stocks found today.",
-                    size="sm",
-                    color="#64748b",
-                    wrap=True,
-                ),
-                FlexText(
-                    text="No S&P 500 stocks currently meet the RSI < 40 + uptrend criteria.",
-                    size="xs",
-                    color="#94a3b8",
-                    wrap=True,
-                ),
-            ],
-        ),
-    )
-    flex_msg = FlexMessage(
-        alt_text="Low RSI Scanner — No buyable stocks today",
-        contents=FlexCarousel(type="carousel", contents=[bubble]),
-    )
     with ApiClient(Configuration(access_token=token)) as api_client:
         line_bot_api = MessagingApi(api_client)
-        line_bot_api.broadcast(BroadcastRequest(messages=[flex_msg]))
+        line_bot_api.broadcast(BroadcastRequest(messages=[
+            TextMessage(text="No buyable stocks found today.")
+        ]))
         print("Sent 'no results' notification to LINE OA.")
 
 
