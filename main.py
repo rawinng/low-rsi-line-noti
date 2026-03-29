@@ -1,7 +1,7 @@
 import pandas as pd
 from fetcher import get_sp500_tickers, get_stock_info
 from scanner import scan_tickers
-from notifier import send_flex
+from notifier import send_flex, send_no_results
 
 
 def main():
@@ -14,6 +14,7 @@ def main():
     print(f"\n=== Buyable stocks (RSI < 40 + Uptrend) ===")
     if not buyable:
         print("No buyable stocks found.")
+        send_no_results()
         return
 
     result = pd.DataFrame(buyable).sort_values("rsi").head(10).reset_index(drop=True)

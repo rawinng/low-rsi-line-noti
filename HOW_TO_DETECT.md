@@ -5,7 +5,7 @@ A stock is flagged as a **BUY** only when all four conditions are true simultane
 ## Buy Conditions
 
 ```
-BUY = RSI < 40  AND  price > SMA50  AND  price > EMA200  AND  MACD crossover
+BUY = RSI < 40  AND  price > SMA50  AND  price > EMA100  AND  MACD crossover
 ```
 
 ---
