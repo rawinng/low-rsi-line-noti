@@ -27,3 +27,5 @@ logs/
 # local script
 run.sh
 *.plist
+
+.claude/worktrees

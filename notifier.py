@@ -170,6 +170,55 @@ def _build_bubble(row: dict) -> FlexBubble:
     )
 
 
+def send_no_results() -> None:
+    if not LINE_NOTIFY_ENABLED:
+        print("LINE_NOTIFY_ENABLED is not set to 'true' — skipping LINE notification.")
+        return
+
+    if not LINE_CHANNEL_ID or not LINE_CHANNEL_SECRET:
+        print("LINE_CHANNEL_ID / LINE_CHANNEL_SECRET not set — skipping LINE notification.")
+        return
+
+    token = _get_token()
+    bubble = FlexBubble(
+        size="kilo",
+        header=FlexBox(
+            layout="vertical",
+            background_color="#1e293b",
+            contents=[
+                FlexText(text="Low RSI Scanner", weight="bold", size="xl", color="#ffffff"),
+                FlexText(text="Daily Scan Result", size="xs", color="#94a3b8"),
+            ],
+        ),
+        body=FlexBox(
+            layout="vertical",
+            spacing="sm",
+            contents=[
+                FlexText(
+                    text="No buyable stocks found today.",
+                    size="sm",
+                    color="#64748b",
+                    wrap=True,
+                ),
+                FlexText(
+                    text="No S&P 500 stocks currently meet the RSI < 40 + uptrend criteria.",
+                    size="xs",
+                    color="#94a3b8",
+                    wrap=True,
+                ),
+            ],
+        ),
+    )
+    flex_msg = FlexMessage(
+        alt_text="Low RSI Scanner — No buyable stocks today",
+        contents=FlexCarousel(type="carousel", contents=[bubble]),
+    )
+    with ApiClient(Configuration(access_token=token)) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        line_bot_api.broadcast(BroadcastRequest(messages=[flex_msg]))
+        print("Sent 'no results' notification to LINE OA.")
+
+
 def send_flex(result_df: pd.DataFrame) -> None:
     if not LINE_NOTIFY_ENABLED:
         print("LINE_NOTIFY_ENABLED is not set to 'true' — skipping LINE notification.")
