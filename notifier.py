@@ -2,41 +2,10 @@ import os
 import pandas as pd
 import requests
 
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
-
-from linebot.v3.messaging import (
-    Configuration,
-    ApiClient,
-    MessagingApi,
-    BroadcastRequest,
-    FlexMessage,
-    FlexCarousel,
-    FlexBubble,
-    FlexBox,
-    FlexText,
-    FlexSeparator,
-    FlexButton,
-    URIAction,
-    TextMessage,
-)
-
-LINE_CHANNEL_ID     = os.environ.get("LINE_CHANNEL_ID", "")
-LINE_CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
-LINE_NOTIFY_ENABLED = os.environ.get("LINE_NOTIFY_ENABLED", "false").lower() == "true"
-
-
-def _get_token() -> str:
-    resp = requests.post(
-        "https://api.line.me/v2/oauth/accessToken",
-        data={
-            "grant_type": "client_credentials",
-            "client_id": LINE_CHANNEL_ID,
-            "client_secret": LINE_CHANNEL_SECRET,
-        }
-    )
-    return resp.json()["access_token"]
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_NOTIFY_ENABLED = os.environ.get("TELEGRAM_NOTIFY_ENABLED", "false").lower() == "true"
 
 
 def _fmt(value, suffix="%", fallback="N/A") -> str:
@@ -55,160 +24,89 @@ def _fmt_mcap(value) -> str:
     return f"${value / 1_000_000:.0f}M"
 
 
-_SECTOR_COLORS = {
-    "Technology":             "#1d4ed8",  # blue
-    "Health Care":            "#0f766e",  # teal
-    "Financial Services":       "#1e3a5f",  # navy
-    "Consumer Defensive":       "#b45309",  # amber-brown
-    "Consumer Staples":       "#4d7c0f",  # olive green
-    "Industrials":            "#374151",  # steel grey
-    "Energy":                 "#92400e",  # dark orange
-    "Utilities":              "#5b21b6",  # purple
-    "Real Estate":            "#be185d",  # pink
-    "Materials":              "#065f46",  # dark green
-    "Communication Services": "#1e40af",  # indigo
-}
-_DEFAULT_SECTOR_COLOR = "#1e293b"
+def _rsi_emoji(rsi: float) -> str:
+    return "🟢" if rsi < 30 else "🟡"
 
 
-def _build_bubble(row: dict) -> FlexBubble:
-    rsi_color = "#22c55e" if row["rsi"] < 30 else "#f59e0b"
-    header_color = _SECTOR_COLORS.get(row.get("sector", ""), _DEFAULT_SECTOR_COLOR)
-    gain = row.get("gain_1yr")
-    gain_color = "#22c55e" if isinstance(gain, (int, float)) and gain >= 0 else "#ef4444"
-    return FlexBubble(
-        size="kilo",
-        header=FlexBox(
-            layout="vertical",
-            background_color=header_color,
-            contents=[
-                FlexText(text=row["ticker"], weight="bold", size="xl", color="#ffffff"),
-                FlexText(text=row["name"], size="xs", color="#94a3b8", wrap=True),
-            ],
-        ),
-        body=FlexBox(
-            layout="vertical",
-            spacing="sm",
-            contents=[
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="Sector", size="sm", color="#64748b", flex=2),
-                        FlexText(text=row["sector"], size="sm", color="#0f172a", flex=3, wrap=True),
-                    ],
-                ),
-                FlexSeparator(),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="RSI (14)", size="sm", color="#64748b", flex=2),
-                        FlexText(text=str(row["rsi"]), size="sm", color=rsi_color, weight="bold", flex=3),
-                    ],
-                ),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="Trend", size="sm", color="#64748b", flex=2),
-                        FlexText(text=row["trend"], size="sm", color="#0f172a", flex=3),
-                    ],
-                ),
-                FlexSeparator(),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="1yr Gain", size="sm", color="#64748b", flex=2),
-                        FlexText(
-                            text=_fmt(gain, suffix="%"),
-                            size="sm", color=gain_color, weight="bold", flex=3,
-                        ),
-                    ],
-                ),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="Net Margin", size="sm", color="#64748b", flex=2),
-                        FlexText(text=_fmt(row.get("profit_margin"), suffix="%"), size="sm", color="#0f172a", flex=3),
-                    ],
-                ),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="ROE", size="sm", color="#64748b", flex=2),
-                        FlexText(text=_fmt(row.get("roe"), suffix="%"), size="sm", color="#0f172a", flex=3),
-                    ],
-                ),
-                FlexSeparator(),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="Price", size="sm", color="#64748b", flex=2),
-                        FlexText(text=_fmt(row.get("price"), suffix=""), size="sm", color="#0f172a", flex=3),
-                    ],
-                ),
-                FlexBox(
-                    layout="horizontal",
-                    contents=[
-                        FlexText(text="Mkt Cap", size="sm", color="#64748b", flex=2),
-                        FlexText(text=_fmt_mcap(row.get("market_cap")), size="sm", color="#0f172a", flex=3),
-                    ],
-                ),
-            ],
-        ),
-        footer=FlexBox(
-            layout="vertical",
-            contents=[
-                FlexButton(
-                    action=URIAction(
-                        label="View on Y!Finance",
-                        uri=f"https://finance.yahoo.com/quote/{row['ticker']}",
-                    ),
-                    style="primary",
-                    color="#1e293b",
-                    height="sm",
-                ),
-            ],
-        ),
-    )
+def _drawdown_emoji(drawdown) -> str:
+    if not isinstance(drawdown, (int, float)):
+        return ""
+    if drawdown <= -20:
+        return "🔻"
+    if drawdown <= -10:
+        return "🟠"
+    return "🟡"
+
+
+def _send_message(text: str, parse_mode: str = "HTML") -> None:
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    resp = requests.post(url, json={
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": parse_mode
+    })
+    resp.raise_for_status()
+
+
+def _build_stock_message(row: dict) -> str:
+    rsi_icon = _rsi_emoji(row["rsi"])
+    drawdown = row.get("drawdown_52w")
+    drawdown_icon = _drawdown_emoji(drawdown)
+
+    lines = [
+        f"<b>{row['ticker']}</b> — {row.get('name', '')}",
+        f"Sector: {row.get('sector', 'N/A')}",
+        f"",
+        f"{rsi_icon} RSI (14): <b>{row['rsi']}</b>",
+        f"Trend: {row['trend']} ({_fmt(row.get('pct_above_sma50'), suffix='%')} vs SMA50)",
+        f"Rev Growth (3y avg): {_fmt(row.get('rev_growth_3y'), suffix='%')}",
+        f"PE: {_fmt(row.get('pe'), suffix='')} vs Ind {_fmt(row.get('industry_pe'), suffix='')} ({_fmt(row.get('pe_discount'), suffix='%')} disc.)",
+        f"{drawdown_icon} Off 52w High: <b>{_fmt(drawdown, suffix='%')}</b>",
+        f"Net Margin: {_fmt(row.get('profit_margin'), suffix='%')}",
+        f"ROE: {_fmt(row.get('roe'), suffix='%')}",
+        f"Price: {_fmt(row.get('price'), suffix='')}",
+        f"Mkt Cap: {_fmt_mcap(row.get('market_cap'))}",
+        f"",
+        f'<a href="https://finance.yahoo.com/quote/{row["ticker"]}">View on Y!Finance</a>',
+    ]
+    return "\n".join(lines)
 
 
 def send_no_results() -> None:
-    if not LINE_NOTIFY_ENABLED:
-        print("LINE_NOTIFY_ENABLED is not set to 'true' — skipping LINE notification.")
+    if not TELEGRAM_NOTIFY_ENABLED:
+        print("TELEGRAM_NOTIFY_ENABLED is not set to 'true' — skipping Telegram notification.")
         return
 
-    if not LINE_CHANNEL_ID or not LINE_CHANNEL_SECRET:
-        print("LINE_CHANNEL_ID / LINE_CHANNEL_SECRET not set — skipping LINE notification.")
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — skipping Telegram notification.")
         return
 
-    token = _get_token()
-    with ApiClient(Configuration(access_token=token)) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        line_bot_api.broadcast(BroadcastRequest(messages=[
-            TextMessage(text="No buyable stocks found today.")
-        ]))
-        print("Sent 'no results' notification to LINE OA.")
+    _send_message("No buyable stocks found today.")
+    print("Sent 'no results' notification to Telegram.")
 
 
 def send_flex(result_df: pd.DataFrame) -> None:
-    if not LINE_NOTIFY_ENABLED:
-        print("LINE_NOTIFY_ENABLED is not set to 'true' — skipping LINE notification.")
+    if not TELEGRAM_NOTIFY_ENABLED:
+        print("TELEGRAM_NOTIFY_ENABLED is not set to 'true' — skipping Telegram notification.")
         return
 
-    if not LINE_CHANNEL_ID or not LINE_CHANNEL_SECRET:
-        print("LINE_CHANNEL_ID / LINE_CHANNEL_SECRET not set — skipping LINE notification.")
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — skipping Telegram notification.")
         return
 
-    token = _get_token()
     rows = result_df.to_dict("records")
-    chunks = [rows[i:i + 12] for i in range(0, len(rows), 12)]
 
-    with ApiClient(Configuration(access_token=token)) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        for chunk in chunks:
-            bubbles = [_build_bubble(row) for row in chunk]
-            flex_msg = FlexMessage(
-                alt_text="Low RSI Watchlist — Buyable Stocks",
-                contents=FlexCarousel(type="carousel", contents=bubbles),
-            )
-            line_bot_api.broadcast(BroadcastRequest(messages=[flex_msg]))
-            print(f"Sent {len(bubbles)} bubble(s) to LINE OA.")
+    header = "📊 <b>Low RSI Watchlist — Buyable Stocks</b>\n"
+    messages = [_build_stock_message(row) for row in rows]
+    full_text = header + "\n" + ("\n\n" + "—" * 20 + "\n\n").join(messages)
+
+    # Telegram message limit is 4096 chars; split if needed
+    if len(full_text) <= 4096:
+        _send_message(full_text)
+        print(f"Sent {len(rows)} stock(s) to Telegram.")
+    else:
+        # Send header + stocks individually
+        _send_message(header)
+        for msg in messages:
+            _send_message(msg)
+        print(f"Sent {len(rows)} stock(s) to Telegram (individual messages).")

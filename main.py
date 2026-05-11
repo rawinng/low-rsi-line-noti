@@ -20,10 +20,16 @@ def main():
         print(f"\nTotal time: {time.time() - start:.1f}s")
         return
 
-    result = pd.DataFrame(buyable).sort_values("rsi").head(10).reset_index(drop=True)
+    result = pd.DataFrame(buyable).sort_values(
+        ["rsi", "pe_discount", "rev_growth_3y"],
+        ascending=[True, False, False],
+        na_position="last",
+    ).head(10).reset_index(drop=True)
     info_df = get_stock_info(result["ticker"].tolist())
     result = result.merge(info_df, on="ticker", how="left")[
-        ["ticker", "name", "sector", "rsi", "trend", "gain_1yr", "profit_margin", "roe", "market_cap", "price"]
+        ["ticker", "name", "sector", "rsi", "trend", "pct_above_sma50",
+         "rev_growth_3y", "pe", "industry_pe", "pe_discount",
+         "drawdown_52w", "profit_margin", "roe", "market_cap", "price"]
     ]
     print(result)
 

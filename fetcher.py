@@ -16,12 +16,14 @@ def get_stock_info(tickers: list[str]) -> pd.DataFrame:
             t = yf.Ticker(ticker)
             info = t.info
 
-            # 1-year capital gain
+            # Drawdown from 52-week high (negative = below high)
             hist = t.history(period="1y")
             if len(hist) >= 2:
-                gain_1yr = round((hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100, 1)
+                high_52w = float(hist["High"].max())
+                last_close = float(hist["Close"].iloc[-1])
+                drawdown_52w = round((last_close / high_52w - 1) * 100, 1)
             else:
-                gain_1yr = None
+                drawdown_52w = None
 
             profit_margin = info.get("profitMargins")
             roe = info.get("returnOnEquity")
@@ -33,7 +35,7 @@ def get_stock_info(tickers: list[str]) -> pd.DataFrame:
                 "ticker": ticker,
                 "name": info.get("shortName", "N/A"),
                 "sector": info.get("sector", "N/A"),
-                "gain_1yr": gain_1yr,
+                "drawdown_52w": drawdown_52w,
                 "profit_margin": round(profit_margin * 100, 1) if profit_margin is not None else None,
                 "roe": round(roe * 100, 1) if roe is not None else None,
                 "market_cap": market_cap,
@@ -41,6 +43,6 @@ def get_stock_info(tickers: list[str]) -> pd.DataFrame:
             })
         except:
             rows.append({"ticker": ticker, "name": "N/A", "sector": "N/A",
-                         "gain_1yr": None, "profit_margin": None, "roe": None,
+                         "drawdown_52w": None, "profit_margin": None, "roe": None,
                          "market_cap": None, "price": None})
     return pd.DataFrame(rows)
